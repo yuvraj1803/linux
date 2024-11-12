@@ -6,6 +6,8 @@
 # Rewritten to use lists instead of if-statements.
 #
 
+obj-$(CONFIG_GREEN_TEE)		+= green_tee/
+
 obj-y				+= cache/
 obj-y				+= irqchip/
 obj-y				+= bus/
