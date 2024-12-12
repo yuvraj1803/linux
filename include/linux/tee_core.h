@@ -100,10 +100,6 @@ struct tee_driver_ops {
 			    struct page **pages, size_t num_pages,
 			    unsigned long start);
 	int (*shm_unregister)(struct tee_context *ctx, struct tee_shm *shm);
-#ifdef CONFIG_TEE_MEDIATOR
-	void (*vm_create_ack)(struct tee_context *ctx, struct kvm* kvm);
-	void (*vm_destroy_ack)(struct tee_context* ctx, struct kvm* kvm);
-#endif
 };
 
 /**

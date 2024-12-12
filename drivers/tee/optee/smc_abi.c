@@ -32,6 +32,7 @@
 #include "optee_rpc_cmd.h"
 #include <linux/kmemleak.h>
 #include <linux/kvm_host.h>
+#include <linux/tee_mediator.h>
 #define CREATE_TRACE_POINTS
 #include "optee_trace.h"
 
@@ -1178,12 +1179,14 @@ static int optee_smc_open(struct tee_context *ctx)
 }
 
 #ifdef CONFIG_TEE_MEDIATOR
-static void optee_vm_create_ack(struct tee_context* ctx, struct kvm* kvm){
+static void optee_vm_create_ack(struct kvm* kvm, bool host){
 
 	if(likely(kvm->tee_vm_created)) return;
 	if(!kvm) return;
 
-	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+	u64 vmid = 0;
+
+	if(!host) vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
 
 	struct arm_smccc_res res;
 
@@ -1192,11 +1195,13 @@ static void optee_vm_create_ack(struct tee_context* ctx, struct kvm* kvm){
 	kvm->tee_vm_created = 1;
 }
 
-static void optee_vm_destroy_ack(struct tee_context* ctx, struct kvm* kvm){
+static void optee_vm_destroy_ack(struct kvm* kvm, bool host){
 	if(likely(kvm->tee_vm_destroyed)) return;
 	if(!kvm) return;
 
-	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+	u64 vmid = 0;
+
+	if(!host) vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
 
 	struct arm_smccc_res res;
 
@@ -1204,6 +1209,12 @@ static void optee_vm_destroy_ack(struct tee_context* ctx, struct kvm* kvm){
 
 	kvm->tee_vm_destroyed = 1;
 }
+
+struct tee_mediator_ops optee_mediator_ops = {
+	.vm_create_ack = optee_vm_create_ack,
+	.vm_destroy_ack = optee_vm_destroy_ack,
+};
+
 #endif
 
 static const struct tee_driver_ops optee_clnt_ops = {
@@ -1217,11 +1228,6 @@ static const struct tee_driver_ops optee_clnt_ops = {
 	.cancel_req = optee_cancel_req,
 	.shm_register = optee_shm_register,
 	.shm_unregister = optee_shm_unregister,
-#ifdef CONFIG_TEE_MEDIATOR
-	.vm_create_ack = optee_vm_create_ack,
-	.vm_destroy_ack = optee_vm_destroy_ack,
-#endif
-
 };
 
 static const struct tee_desc optee_clnt_desc = {
@@ -1795,6 +1801,11 @@ static int optee_probe(struct platform_device *pdev)
 	 */
 	optee_disable_unmapped_shm_cache(optee);
 
+#ifdef CONFIG_TEE_MEDIATOR
+	if(tee_mediator_init(&optee_mediator_ops) < 0){
+		pr_err("optee mediator failed to initialize\n");
+	}
+#endif
 	/*
 	 * Only enable the shm cache in case we're not able to pass the RPC
 	 * arg struct right after the normal arg struct.
