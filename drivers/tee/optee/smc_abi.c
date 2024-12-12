@@ -31,6 +31,7 @@
 #include "optee_smc.h"
 #include "optee_rpc_cmd.h"
 #include <linux/kmemleak.h>
+#include <linux/kvm_host.h>
 #define CREATE_TRACE_POINTS
 #include "optee_trace.h"
 
@@ -1176,6 +1177,35 @@ static int optee_smc_open(struct tee_context *ctx)
 	return optee_open(ctx, sec_caps & OPTEE_SMC_SEC_CAP_MEMREF_NULL);
 }
 
+#ifdef CONFIG_TEE_MEDIATOR
+static void optee_vm_create_ack(struct tee_context* ctx, struct kvm* kvm){
+
+	if(likely(kvm->tee_vm_created)) return;
+	if(!kvm) return;
+
+	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(OPTEE_SMC_VM_CREATED, vmid, 0, 0, 0, 0, 0, 0, &res);
+
+	kvm->tee_vm_created = 1;
+}
+
+static void optee_vm_destroy_ack(struct tee_context* ctx, struct kvm* kvm){
+	if(likely(kvm->tee_vm_destroyed)) return;
+	if(!kvm) return;
+
+	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(OPTEE_SMC_VM_DESTROYED, vmid, 0, 0, 0, 0, 0, 0, &res);
+
+	kvm->tee_vm_destroyed = 1;
+}
+#endif
+
 static const struct tee_driver_ops optee_clnt_ops = {
 	.get_version = optee_get_version,
 	.open = optee_smc_open,
@@ -1187,6 +1217,11 @@ static const struct tee_driver_ops optee_clnt_ops = {
 	.cancel_req = optee_cancel_req,
 	.shm_register = optee_shm_register,
 	.shm_unregister = optee_shm_unregister,
+#ifdef CONFIG_TEE_MEDIATOR
+	.vm_create_ack = optee_vm_create_ack,
+	.vm_destroy_ack = optee_vm_destroy_ack,
+#endif
+
 };
 
 static const struct tee_desc optee_clnt_desc = {

@@ -851,6 +851,12 @@ struct kvm {
 	struct xarray mem_attr_array;
 #endif
 	char stats_id[KVM_STATS_NAME_SIZE];
+
+#ifdef CONFIG_TEE_MEDIATOR
+	bool tee_vm_created;
+	bool tee_vm_destroyed;
+#endif
+
 };
 
 #define kvm_err(fmt, ...) \

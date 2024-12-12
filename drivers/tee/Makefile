@@ -6,3 +6,4 @@ tee-objs += tee_shm_pool.o
 obj-$(CONFIG_OPTEE) += optee/
 obj-$(CONFIG_AMDTEE) += amdtee/
 obj-$(CONFIG_ARM_TSTEE) += tstee/
+obj-$(CONFIG_TEE_MEDIATOR) += tee_mediator.o

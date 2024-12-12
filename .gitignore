@@ -23,6 +23,7 @@
 *.dtbo.S
 *.dwo
 *.elf
+*.ext4
 *.gcno
 *.gcda
 *.gz

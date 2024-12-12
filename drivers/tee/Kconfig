@@ -13,6 +13,14 @@ menuconfig TEE
 
 if TEE
 
+config TEE_MEDIATOR
+	bool "TEE support for KVM guests"
+	depends on KVM
+	default y
+	help
+		Guest VMs running under KVM are not exposed to the underlying TEE. The TEE Mediator forwards requests
+		make from guests by appropriately modifying arguments.
+
 source "drivers/tee/optee/Kconfig"
 source "drivers/tee/amdtee/Kconfig"
 source "drivers/tee/tstee/Kconfig"
