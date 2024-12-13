@@ -1179,38 +1179,52 @@ static int optee_smc_open(struct tee_context *ctx)
 }
 
 #ifdef CONFIG_TEE_MEDIATOR
-static void optee_vm_create_ack(struct kvm* kvm, bool host){
 
-	if(likely(kvm->tee_vm_created)) return;
+static void optee_host_create_ack(void){
+
+	u64 hyp_clnt_id = 0;
+
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(OPTEE_SMC_VM_CREATED, hyp_clnt_id, 0, 0, 0, 0, 0, 0, &res);
+
+}
+
+static void optee_host_destroy_ack(void){
+
+	u64 hyp_clnt_id = 0;
+
+	struct arm_smccc_res res;
+
+	arm_smccc_smc(OPTEE_SMC_VM_DESTROYED, hyp_clnt_id, 0, 0, 0, 0, 0, 0, &res);
+
+}
+
+static void optee_vm_create_ack(struct kvm* kvm){
+
 	if(!kvm) return;
 
-	u64 vmid = 0;
-
-	if(!host) vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
 
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(OPTEE_SMC_VM_CREATED, vmid, 0, 0, 0, 0, 0, 0, &res);
 
-	kvm->tee_vm_created = 1;
 }
 
-static void optee_vm_destroy_ack(struct kvm* kvm, bool host){
-	if(likely(kvm->tee_vm_destroyed)) return;
+static void optee_vm_destroy_ack(struct kvm* kvm){
 	if(!kvm) return;
 
-	u64 vmid = 0;
-
-	if(!host) vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
 
 	struct arm_smccc_res res;
 
 	arm_smccc_smc(OPTEE_SMC_VM_DESTROYED, vmid, 0, 0, 0, 0, 0, 0, &res);
-
-	kvm->tee_vm_destroyed = 1;
 }
 
 struct tee_mediator_ops optee_mediator_ops = {
+	.host_create_ack = optee_host_create_ack,
+	.host_destroy_ack = optee_host_destroy_ack,
 	.vm_create_ack = optee_vm_create_ack,
 	.vm_destroy_ack = optee_vm_destroy_ack,
 };
