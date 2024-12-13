@@ -7,6 +7,26 @@ static bool tee_host_create_acked = 0;
 static bool tee_host_destroy_acked = 0;
 static struct tee_mediator *mediator;
 
+static void tee_mediator_host_create_ack(void){
+	if(!mediator) return;
+	if(tee_host_create_acked) return;
+	if(!mediator->ops->host_create_ack) return;
+
+	mediator->ops->host_create_ack();
+
+	tee_host_create_acked = 1;
+}
+
+static void tee_mediator_host_destroy_ack(void){
+	if(!mediator) return;
+	if(tee_host_destroy_acked) return;
+	if(!mediator->ops->host_destroy_ack) return;
+
+	mediator->ops->host_destroy_ack();
+
+	tee_host_destroy_acked = 1;
+}
+
 int tee_mediator_init(struct tee_mediator_ops* ops){
 
 	if(!ops){
@@ -20,28 +40,22 @@ int tee_mediator_init(struct tee_mediator_ops* ops){
 
 	mediator->ops = ops;
 
+	tee_mediator_host_create_ack();
+
 	return 0;
 }
 
-void tee_mediator_host_create_ack(void){
-	if(!mediator) return;
-	if(tee_host_create_acked) return;
-	if(!mediator->ops->host_create_ack) return;
+void tee_mediator_exit(void){
 
-	mediator->ops->host_create_ack();
+	if(mediator){
+		kfree(mediator);
+	}
 
-	tee_host_create_acked = 1;
+	tee_mediator_host_destroy_ack();
+
 }
 
-void tee_mediator_host_destroy_ack(void){
-	if(!mediator) return;
-	if(tee_host_destroy_acked) return;
-	if(!mediator->ops->host_destroy_ack) return;
 
-	mediator->ops->host_destroy_ack();
-
-	tee_host_destroy_acked = 1;
-}
 
 void tee_mediator_vm_create_ack(struct kvm* kvm){
 	if(!mediator) return;

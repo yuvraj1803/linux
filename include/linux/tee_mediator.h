@@ -17,8 +17,7 @@ struct tee_mediator{
 };
 
 int tee_mediator_init(struct tee_mediator_ops* ops);
-void tee_mediator_host_create_ack(void);
-void tee_mediator_host_destroy_ack(void);
+void tee_mediator_exit(void);
 void tee_mediator_vm_create_ack(struct kvm* kvm);
 void tee_mediator_vm_destroy_ack(struct kvm* kvm);
 

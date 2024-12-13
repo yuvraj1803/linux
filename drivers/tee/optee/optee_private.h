@@ -315,6 +315,11 @@ int optee_open(struct tee_context *ctx, bool cap_memref_null);
 void optee_release(struct tee_context *ctx);
 void optee_release_supp(struct tee_context *ctx);
 
+#ifdef CONFIG_TEE_MEDIATOR
+int optee_mediator_init(void);
+void optee_mediator_exit(void);
+#endif
+
 static inline void optee_from_msg_param_value(struct tee_param *p, u32 attr,
 					      const struct optee_msg_param *mp)
 {

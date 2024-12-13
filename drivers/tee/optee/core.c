@@ -206,6 +206,10 @@ static int __init optee_core_init(void)
 	if (is_kdump_kernel())
 		return -ENODEV;
 
+#ifdef CONFIG_TEE_MEDIATOR
+	optee_mediator_init();
+#endif
+
 	if (IS_REACHABLE(CONFIG_RPMB)) {
 		rc = rpmb_interface_register(&rpmb_class_intf);
 		if (rc)
@@ -225,6 +229,8 @@ static int __init optee_core_init(void)
 		return smc_abi_rc;
 	}
 
+
+
 	return 0;
 }
 module_init(optee_core_init);
@@ -240,6 +246,11 @@ static void __exit optee_core_exit(void)
 		optee_smc_abi_unregister();
 	if (!ffa_abi_rc)
 		optee_ffa_abi_unregister();
+
+#ifdef CONFIG_TEE_MEDIATOR
+	optee_mediator_exit();
+#endif
+
 }
 module_exit(optee_core_exit);
 

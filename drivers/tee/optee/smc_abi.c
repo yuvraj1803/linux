@@ -1180,6 +1180,7 @@ static int optee_smc_open(struct tee_context *ctx)
 
 #ifdef CONFIG_TEE_MEDIATOR
 
+
 static void optee_host_create_ack(void){
 
 	u64 hyp_clnt_id = 0;
@@ -1228,6 +1229,23 @@ struct tee_mediator_ops optee_mediator_ops = {
 	.vm_create_ack = optee_vm_create_ack,
 	.vm_destroy_ack = optee_vm_destroy_ack,
 };
+
+int optee_mediator_init(void){
+
+	int r = tee_mediator_init(&optee_mediator_ops);
+
+	if(r < 0){
+		pr_err("optee mediator failed to initialize\n");
+	}
+
+	return r;
+
+}
+
+void optee_mediator_exit(void){
+	tee_mediator_exit();
+}
+
 
 #endif
 
@@ -1814,7 +1832,6 @@ static int optee_probe(struct platform_device *pdev)
 	 * shm cache.
 	 */
 	optee_disable_unmapped_shm_cache(optee);
-
 #ifdef CONFIG_TEE_MEDIATOR
 	if(tee_mediator_init(&optee_mediator_ops) < 0){
 		pr_err("optee mediator failed to initialize\n");
