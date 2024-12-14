@@ -927,6 +927,14 @@ static int optee_smc_do_call_with_arg(struct tee_context *ctx,
 			param.a0 = OPTEE_SMC_CALL_WITH_ARG;
 		reg_pair_from_64(&param.a1, &param.a2, parg);
 	}
+
+#ifdef CONFIG_TEE_MEDIATOR
+
+	if(is_kvm_initialised()){
+		param.a7 = 0; // Hypervisor Client ID
+	}
+
+#endif
 	/* Initialize waiter */
 	optee_cq_wait_init(&optee->call_queue, &w, system_thread);
 	while (true) {
