@@ -1178,76 +1178,6 @@ static int optee_smc_open(struct tee_context *ctx)
 	return optee_open(ctx, sec_caps & OPTEE_SMC_SEC_CAP_MEMREF_NULL);
 }
 
-#ifdef CONFIG_TEE_MEDIATOR
-
-
-static void optee_host_create_ack(void){
-
-	u64 hyp_clnt_id = 0;
-
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(OPTEE_SMC_VM_CREATED, hyp_clnt_id, 0, 0, 0, 0, 0, 0, &res);
-
-}
-
-static void optee_host_destroy_ack(void){
-
-	u64 hyp_clnt_id = 0;
-
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(OPTEE_SMC_VM_DESTROYED, hyp_clnt_id, 0, 0, 0, 0, 0, 0, &res);
-
-}
-
-static void optee_vm_create_ack(struct kvm* kvm){
-
-	if(!kvm) return;
-
-	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
-
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(OPTEE_SMC_VM_CREATED, vmid, 0, 0, 0, 0, 0, 0, &res);
-
-}
-
-static void optee_vm_destroy_ack(struct kvm* kvm){
-	if(!kvm) return;
-
-	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
-
-	struct arm_smccc_res res;
-
-	arm_smccc_smc(OPTEE_SMC_VM_DESTROYED, vmid, 0, 0, 0, 0, 0, 0, &res);
-}
-
-struct tee_mediator_ops optee_mediator_ops = {
-	.host_create_ack = optee_host_create_ack,
-	.host_destroy_ack = optee_host_destroy_ack,
-	.vm_create_ack = optee_vm_create_ack,
-	.vm_destroy_ack = optee_vm_destroy_ack,
-};
-
-int optee_mediator_init(void){
-
-	int r = tee_mediator_init(&optee_mediator_ops);
-
-	if(r < 0){
-		pr_err("optee mediator failed to initialize\n");
-	}
-
-	return r;
-
-}
-
-void optee_mediator_exit(void){
-	tee_mediator_exit();
-}
-
-
-#endif
 
 static const struct tee_driver_ops optee_clnt_ops = {
 	.get_version = optee_get_version,
@@ -1542,6 +1472,75 @@ static void optee_shutdown(struct platform_device *pdev)
 	if (!optee->rpc_param_count)
 		optee_disable_shm_cache(optee);
 }
+
+
+#ifdef CONFIG_TEE_MEDIATOR
+
+static void optee_host_create_ack(void){
+
+	u64 hyp_clnt_id = 0;
+
+	struct arm_smccc_res res;
+
+	optee_smccc_smc(OPTEE_SMC_VM_CREATED, hyp_clnt_id, 0, 0, 0, 0, 0, 0, &res);
+
+}
+
+static void optee_host_destroy_ack(void){
+
+	u64 hyp_clnt_id = 0;
+
+	struct arm_smccc_res res;
+
+	optee_smccc_smc(OPTEE_SMC_VM_DESTROYED, hyp_clnt_id, 0, 0, 0, 0, 0, 0, &res);
+
+}
+
+static void optee_vm_create_ack(struct kvm* kvm){
+
+	if(!kvm) return;
+
+	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+
+	struct arm_smccc_res res;
+
+	optee_smccc_smc(OPTEE_SMC_VM_CREATED, vmid, 0, 0, 0, 0, 0, 0, &res);
+
+}
+
+static void optee_vm_destroy_ack(struct kvm* kvm){
+	if(!kvm) return;
+
+	u64 vmid = atomic64_read(&kvm->arch.mmu.vmid.id);
+
+	struct arm_smccc_res res;
+
+	optee_smccc_smc(OPTEE_SMC_VM_DESTROYED, vmid, 0, 0, 0, 0, 0, 0, &res);
+}
+
+struct tee_mediator_ops optee_mediator_ops = {
+	.host_create_ack = optee_host_create_ack,
+	.host_destroy_ack = optee_host_destroy_ack,
+	.vm_create_ack = optee_vm_create_ack,
+	.vm_destroy_ack = optee_vm_destroy_ack,
+};
+
+int optee_mediator_init(void){
+
+	int r = tee_mediator_init(&optee_mediator_ops);
+
+	if(r < 0){
+		pr_err("optee mediator failed to initialize\n");
+	}
+
+	return r;
+
+}
+
+void optee_mediator_exit(void){
+	tee_mediator_exit();
+}
+#endif
 
 #ifdef CONFIG_OPTEE_INSECURE_LOAD_IMAGE
 
