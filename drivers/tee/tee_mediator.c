@@ -1,7 +1,10 @@
+#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
+
 #include <linux/tee_mediator.h>
 #include <linux/tee_core.h>
 #include <linux/kvm_host.h>
 #include <linux/mm.h>
+
 
 static bool tee_host_create_acked = 0;
 static bool tee_host_destroy_acked = 0;
@@ -15,6 +18,7 @@ static void tee_mediator_host_create_ack(void){
 	mediator->ops->host_create_ack();
 
 	tee_host_create_acked = 1;
+
 }
 
 static void tee_mediator_host_destroy_ack(void){
@@ -25,6 +29,7 @@ static void tee_mediator_host_destroy_ack(void){
 	mediator->ops->host_destroy_ack();
 
 	tee_host_destroy_acked = 1;
+
 }
 
 int tee_mediator_init(struct tee_mediator_ops* ops){
@@ -46,6 +51,8 @@ int tee_mediator_init(struct tee_mediator_ops* ops){
 
 	tee_mediator_host_create_ack();
 
+	pr_info("TEE Mediator initialised\n");
+
 	return 0;
 }
 
@@ -57,6 +64,7 @@ void tee_mediator_exit(void){
 
 	tee_mediator_host_destroy_ack();
 
+	pr_info("TEE Mediator exiting\n");
 }
 
 
