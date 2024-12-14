@@ -29,6 +29,10 @@ static void tee_mediator_host_destroy_ack(void){
 
 int tee_mediator_init(struct tee_mediator_ops* ops){
 
+	if(!is_kvm_initialised()){
+		return -ENODEV;
+	}
+
 	if(!ops){
 		return -EINVAL;
 	}
