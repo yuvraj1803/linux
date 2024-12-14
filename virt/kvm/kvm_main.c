@@ -156,6 +156,12 @@ static unsigned long long kvm_active_vms;
 
 static DEFINE_PER_CPU(cpumask_var_t, cpu_kick_mask);
 
+static bool kvm_initialised;
+
+bool is_kvm_initialised(){
+	return kvm_initialised;
+}
+
 __weak void kvm_arch_guest_memory_reclaimed(struct kvm *kvm)
 {
 }
@@ -6385,6 +6391,8 @@ int kvm_init(unsigned vcpu_size, unsigned vcpu_align, struct module *module)
 		goto err_register;
 	}
 
+	kvm_initialised = true;
+
 	return 0;
 
 err_register:
@@ -6424,5 +6432,8 @@ void kvm_exit(void)
 	kvm_vfio_ops_exit();
 	kvm_async_pf_deinit();
 	kvm_irqfd_exit();
+
+	kvm_initialised = false;
+
 }
 EXPORT_SYMBOL_GPL(kvm_exit);

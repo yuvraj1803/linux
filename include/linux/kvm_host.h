@@ -99,6 +99,8 @@
 #define KVM_PFN_ERR_SIGPENDING	(KVM_PFN_ERR_MASK + 3)
 #define KVM_PFN_ERR_NEEDS_IO	(KVM_PFN_ERR_MASK + 4)
 
+bool is_kvm_initialised(void);
+
 /*
  * error pfns indicate that the gfn is in slot but faild to
  * translate it to pfn on host.
