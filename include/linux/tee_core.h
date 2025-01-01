@@ -15,7 +15,6 @@
 #include <linux/tee_drv.h>
 #include <linux/types.h>
 #include <linux/uuid.h>
-#include <linux/kvm_host.h>
 
 /*
  * The file describes the API provided by the generic TEE driver to the
