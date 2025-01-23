@@ -26,9 +26,6 @@ static struct optee_mediator *mediator;
 static spinlock_t mediator_lock;
 static u32 optee_thread_limit;
 
-#pragma GCC push_options
-#pragma GCC optimize("-O0")
-
 static void copy_regs_from_vcpu(struct kvm_vcpu *vcpu, struct guest_regs *regs) {
 	if(!vcpu || !regs)
 		return;
@@ -1170,7 +1167,6 @@ static int optee_mediator_is_active(void) {
 	
 	return ret;
 }
-#pragma GCC pop_options
 
 struct tee_mediator_ops optee_mediator_ops = {
 	.create_host = optee_mediator_create_host,
