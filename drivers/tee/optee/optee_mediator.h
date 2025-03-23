@@ -26,7 +26,7 @@ struct optee_vm_context {
 	struct list_head shm_buf_list;
 	struct list_head shm_rpc_list;
 
-	spinlock_t lock;
+	struct mutex lock;
 
 	struct kvm* kvm;
 	u64 vmid;

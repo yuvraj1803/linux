@@ -113,7 +113,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 		goto out;
 	}
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	
 	list_for_each_entry_safe(call, tmp_call, &vm_context->std_call_list, list) {
 		if(call) {
@@ -158,7 +158,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 	}
 
 
-	spin_unlock(&vm_context->lock);	
+	mutex_unlock(&vm_context->lock);	
 
 	spin_lock(&mediator->vm_list_lock);
 
@@ -193,10 +193,10 @@ static void optee_mediator_del_std_call(struct optee_std_call *call) {
 }
 
 static void optee_mediator_enlist_std_call(struct optee_vm_context *vm_context, struct optee_std_call *call) {
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_add_tail(&call->list, &vm_context->std_call_list);
 	vm_context->call_count++;
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	
 	struct page *page;
@@ -212,10 +212,10 @@ static void optee_mediator_enlist_std_call(struct optee_vm_context *vm_context, 
 }
 
 static void optee_mediator_delist_std_call(struct optee_vm_context *vm_context, struct optee_std_call *call) {
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_del(&call->list);
 	vm_context->call_count--;
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	
 
@@ -235,14 +235,14 @@ static struct optee_std_call *optee_mediator_find_std_call(struct optee_vm_conte
 	struct optee_std_call *call;
 	int found = 0;
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_for_each_entry(call, &vm_context->std_call_list, list) {
 		if(call->thread_id == thread_id) {
 			found = 1;
 			break;
 		}
 	}
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	if(!found)
 		return NULL;
@@ -257,10 +257,10 @@ static struct optee_shm_buf *optee_mediator_new_shm_buf(void) {
 }
 
 static void optee_mediator_enlist_shm_buf(struct optee_vm_context *vm_context, struct optee_shm_buf *shm_buf) {
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_add_tail(&shm_buf->list, &vm_context->shm_buf_list);
 	vm_context->shm_buf_page_count += shm_buf->num_pages;
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	for(int i = 0; i < shm_buf->num_pages; i++) {
 		struct page *page = shm_buf->guest_page_list[i];
@@ -273,7 +273,7 @@ static void optee_mediator_free_shm_buf(struct optee_vm_context *vm_context, u64
 
 	struct optee_shm_buf *shm_buf, *tmp;
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_for_each_entry_safe(shm_buf, tmp, &vm_context->shm_buf_list, list) {
 		if(shm_buf->cookie == cookie) {
 			for(int buf = 0; buf < shm_buf->num_buffers; buf++) {
@@ -297,7 +297,7 @@ static void optee_mediator_free_shm_buf(struct optee_vm_context *vm_context, u64
 			break;
 		}
 	}
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 }
 
 static void optee_mediator_free_all_buffers(struct optee_vm_context *vm_context, struct optee_std_call *call) {
@@ -317,7 +317,7 @@ static void optee_mediator_free_all_buffers(struct optee_vm_context *vm_context,
 }
 
 static void optee_mediator_free_shm_buf_page_list(struct optee_vm_context *vm_context, u64 cookie) {
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	
 	struct optee_shm_buf *shm_buf;
 
@@ -333,7 +333,7 @@ static void optee_mediator_free_shm_buf_page_list(struct optee_vm_context *vm_co
 		}
 	}
 
-	spin_unlock(&vm_context->lock);	
+	mutex_unlock(&vm_context->lock);	
 }
 
 static struct optee_shm_rpc *optee_mediator_new_shm_rpc(void) {
@@ -343,9 +343,9 @@ static struct optee_shm_rpc *optee_mediator_new_shm_rpc(void) {
 }
 
 static void optee_mediator_enlist_shm_rpc(struct optee_vm_context *vm_context, struct optee_shm_rpc *shm_rpc) {
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_add_tail(&shm_rpc->list, &vm_context->shm_rpc_list);
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	struct page *page;
 
@@ -359,14 +359,14 @@ static struct optee_shm_rpc *optee_mediator_find_shm_rpc(struct optee_vm_context
 	struct optee_shm_rpc *shm_rpc;
 	int found = 0;
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	list_for_each_entry(shm_rpc, &vm_context->shm_rpc_list, list) {
 		if(shm_rpc->cookie == cookie) {
 			found = 1;
 			break;
 		}
 	}
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	if(!found)
 		return NULL;
@@ -378,7 +378,7 @@ static void optee_mediator_free_shm_rpc(struct optee_vm_context *vm_context, u64
 
 	struct optee_shm_rpc *shm_rpc, *tmp;
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 
 	list_for_each_entry_safe(shm_rpc, tmp, &vm_context->shm_rpc_list, list) {
 		if(shm_rpc->cookie == cookie) {
@@ -394,7 +394,7 @@ static void optee_mediator_free_shm_rpc(struct optee_vm_context *vm_context, u64
 		}
 	}
 
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 }
 
 static hva_t optee_mediator_gpa_to_hva(struct kvm *kvm, gpa_t gpa) {
@@ -499,13 +499,13 @@ static int optee_mediator_resolve_noncontig(struct optee_vm_context *vm_context,
 	u64 guest_buffer_offset = param->u.tmem.buf_ptr & (OPTEE_MSG_NONCONTIG_PAGE_SIZE - 1);
 	u64 num_entries = DIV_ROUND_UP(guest_buffer_size + guest_buffer_offset, OPTEE_MSG_NONCONTIG_PAGE_SIZE);
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 	if(vm_context->shm_buf_page_count + num_entries > OPTEE_MAX_SHM_BUFFER_PAGES) {
 		ret = -ENOMEM;
-		spin_unlock(&vm_context->lock);
+		mutex_unlock(&vm_context->lock);
 		goto out;
 	}
-	spin_unlock(&vm_context->lock);
+	mutex_unlock(&vm_context->lock);
 
 	u64 num_buffers = DIV_ROUND_UP(num_entries, OPTEE_BUFFER_ENTRIES);
 
@@ -695,7 +695,7 @@ static int optee_mediator_create_vm(struct kvm *kvm) {
 	INIT_LIST_HEAD(&vm_context->shm_buf_list);
 	INIT_LIST_HEAD(&vm_context->shm_rpc_list);
 
-	spin_lock_init(&vm_context->lock);
+	mutex_init(&vm_context->lock);
 
 	vm_context->kvm = kvm;
 
@@ -876,15 +876,15 @@ static void optee_mediator_handle_std_call(struct kvm_vcpu *vcpu, struct guest_r
 		goto out_call_free;
 	}
 
-	spin_lock(&vm_context->lock);
+	mutex_lock(&vm_context->lock);
 
 	if(vm_context->call_count >= optee_thread_limit) {
 		res.a0 = OPTEE_SMC_RETURN_ETHREAD_LIMIT;
-		spin_unlock(&vm_context->lock);
+		mutex_unlock(&vm_context->lock);
 		goto out_call_free;
 	}
 
-	spin_unlock(&vm_context->lock);	
+	mutex_unlock(&vm_context->lock);	
 
 	INIT_LIST_HEAD(&call->list);
 
