@@ -15,7 +15,7 @@
 
 struct optee_mediator {
 	struct list_head vm_list;
-	spinlock_t vm_list_lock;
+	struct mutex vm_list_lock;
 	
 	atomic_t next_vmid;
 };

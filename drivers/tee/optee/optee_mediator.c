@@ -71,7 +71,7 @@ static struct optee_vm_context *optee_mediator_find_vm_context(struct kvm *kvm){
 		goto out;
 	}
 
-	spin_lock(&mediator->vm_list_lock);
+	mutex_lock(&mediator->vm_list_lock);
 
 	list_for_each_entry_safe(vm_context, tmp, &mediator->vm_list, list) {
 		if(vm_context->kvm == kvm){
@@ -80,7 +80,7 @@ static struct optee_vm_context *optee_mediator_find_vm_context(struct kvm *kvm){
 		}
 	}
 
-	spin_unlock(&mediator->vm_list_lock);
+	mutex_unlock(&mediator->vm_list_lock);
 
 out:
 	if(!found)
@@ -94,9 +94,9 @@ static void optee_mediator_add_vm_context(struct optee_vm_context *vm_context){
 	if(!vm_context)
 		goto out;
 
-	spin_lock(&mediator->vm_list_lock);
+	mutex_lock(&mediator->vm_list_lock);
 	list_add_tail(&vm_context->list, &mediator->vm_list);
-	spin_unlock(&mediator->vm_list_lock);
+	mutex_unlock(&mediator->vm_list_lock);
 
 out:
 	return;
@@ -160,7 +160,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 
 	mutex_unlock(&vm_context->lock);	
 
-	spin_lock(&mediator->vm_list_lock);
+	mutex_lock(&mediator->vm_list_lock);
 
 	list_for_each_entry_safe(cursor_vm_context, tmp, &mediator->vm_list, list) {
 		if(cursor_vm_context == vm_context){
@@ -172,7 +172,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 	}
 
 out_unlock:
-	spin_unlock(&mediator->vm_list_lock);
+	mutex_unlock(&mediator->vm_list_lock);
 out:
 	return;
 }
@@ -1230,7 +1230,7 @@ static int __init optee_mediator_init(void) {
 	atomic_set(&mediator->next_vmid,2); // VMID 0 is reserved for the hypervisor and 1 is for host.
 	
 	INIT_LIST_HEAD(&mediator->vm_list);
-	spin_lock_init(&mediator->vm_list_lock);
+	mutex_init(&mediator->vm_list_lock);
 	spin_lock_init(&mediator_lock);
 
 	pr_info("mediator initialised\n");
