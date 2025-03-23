@@ -1184,7 +1184,7 @@ static int optee_check_virtualization(void){
 	struct arm_smccc_res res;
 	arm_smccc_smc(OPTEE_SMC_VM_DESTROYED, 0, 0, 0, 0, 0, 0, 0, &res);
 
-	if(res.a0 != OPTEE_SMC_RETURN_OK) {
+	if(res.a0 == OPTEE_SMC_RETURN_UNKNOWN_FUNCTION) {
 		ret = -ENOSYS;
 		goto out;
 	}
