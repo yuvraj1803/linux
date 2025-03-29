@@ -5,6 +5,7 @@
 
 #include <linux/types.h>
 #include <linux/mm_types.h>
+#include <linux/kvm_types.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 
@@ -71,7 +72,7 @@ struct optee_shm_buf {
 	struct page_data **shadow_buffer_list;
 	u64 num_buffers;
 
-	struct page **guest_page_list;
+	gpa_t *guest_page_list;
 	u64 num_pages;
 
 	u64 cookie;

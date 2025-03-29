@@ -22,6 +22,9 @@
                               OPTEE_SMC_SEC_CAP_DYNAMIC_SHM | \
                               OPTEE_SMC_SEC_CAP_MEMREF_NULL)
 
+#pragma GCC push_options
+#pragma GCC optimize("O0")
+
 static struct optee_mediator *mediator;
 static spinlock_t mediator_lock;
 static u32 optee_thread_limit;
@@ -54,15 +57,47 @@ static void optee_mediator_smccc_smc(struct guest_regs *regs, struct arm_smccc_r
 	 regs->a4, regs->a5, regs->a6, regs->a7, res);
 }
 
-static void optee_mediator_pin_page(struct page *page) {
-	get_page(page);
+static int optee_mediator_pin_guest_page(struct kvm *kvm, gpa_t gpa) {
+	
+	int ret = 0;
+
+	gfn_t gfn = gpa >> PAGE_SHIFT;
+
+	struct kvm_memory_slot *memslot = gfn_to_memslot(kvm, gfn);
+	if(!memslot) {
+		ret = -EAGAIN;
+		goto out;
+	}
+
+	struct page *pages;
+
+	if(!pin_user_pages_unlocked(memslot->userspace_addr,
+								1,
+								&pages,
+								FOLL_LONGTERM)) {
+		ret = -EAGAIN;
+		goto out;
+	}
+
+out:
+	return ret;
 }
 
-static void optee_mediator_unpin_page(struct page *page) {
-	put_page(page);
+static void optee_mediator_unpin_guest_page(struct kvm *kvm, gpa_t gpa) {
+
+	gfn_t gfn = gpa >> PAGE_SHIFT;
+
+	struct page *page = gfn_to_page(kvm, gfn);
+	if(!page)
+		goto out;
+
+	unpin_user_page(page);
+
+out:
+	return;
 }
 
-static struct optee_vm_context *optee_mediator_find_vm_context(struct kvm *kvm){
+static struct optee_vm_context *Foptee_mediator_find_vm_context(struct kvm *kvm){
 
 	struct optee_vm_context *vm_context, *tmp;
 	int found = 0;
@@ -117,13 +152,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 	
 	list_for_each_entry_safe(call, tmp_call, &vm_context->std_call_list, list) {
 		if(call) {
-			struct page *page;
-			page = virt_to_page(call->guest_arg_hva);
-			if(page)
-				optee_mediator_unpin_page(page);
-			page = virt_to_page(call->shadow_arg);
-			if(page)
-				optee_mediator_unpin_page(page);
+			optee_mediator_unpin_guest_page(vm_context->kvm, (gpa_t) call->guest_arg_gpa);
 
 			list_del(&call->list);
 			kfree(call->shadow_arg);
@@ -136,9 +165,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 		if(shm_buf) {
 
 			for(int j = 0; j < shm_buf->num_pages; j++) {
-				struct page *page = shm_buf->guest_page_list[j];
-				if(page)
-					optee_mediator_unpin_page(page);
+				optee_mediator_unpin_guest_page(vm_context->kvm, (gpa_t) shm_buf->guest_page_list[j]);
 			}
 			list_del(&shm_buf->list);
 			vfree(shm_buf->shadow_buffer_list);
@@ -149,9 +176,7 @@ static void optee_mediator_delete_vm_context(struct optee_vm_context *vm_context
 
 	list_for_each_entry_safe(shm_rpc, tmp_shm_rpc, &vm_context->shm_rpc_list, list) {
 		if(shm_rpc) {
-			struct page *page = virt_to_page(shm_rpc->rpc_arg_hva);
-			if(page) 
-				optee_mediator_unpin_page(page);
+			optee_mediator_unpin_guest_page(vm_context->kvm, (gpa_t) shm_rpc->rpc_arg_gpa);
 			list_del(&shm_rpc->list);
 			kfree(shm_rpc);
 		}
@@ -199,16 +224,7 @@ static void optee_mediator_enlist_std_call(struct optee_vm_context *vm_context, 
 	mutex_unlock(&vm_context->lock);
 
 	
-	struct page *page;
-	page = virt_to_page(call->guest_arg_hva);
-	if(page)
-		optee_mediator_pin_page(page);
-	
-	page = virt_to_page(call->shadow_arg);
-	if(page)
-		optee_mediator_pin_page(page);
-
-	
+	optee_mediator_pin_guest_page(vm_context->kvm,(gpa_t) call->guest_arg_gpa);	
 }
 
 static void optee_mediator_delist_std_call(struct optee_vm_context *vm_context, struct optee_std_call *call) {
@@ -219,16 +235,8 @@ static void optee_mediator_delist_std_call(struct optee_vm_context *vm_context, 
 
 	
 
-	struct page *page;
-	page = virt_to_page(call->guest_arg_hva);
-	if(page)
-		optee_mediator_unpin_page(page);
-	
-	page = virt_to_page(call->shadow_arg);
-	if(page)
-		optee_mediator_unpin_page(page);
+	optee_mediator_unpin_guest_page(vm_context->kvm, (gpa_t) call->guest_arg_gpa);	
 
-	
 }
 
 static struct optee_std_call *optee_mediator_find_std_call(struct optee_vm_context *vm_context, u32 thread_id) {
@@ -263,9 +271,7 @@ static void optee_mediator_enlist_shm_buf(struct optee_vm_context *vm_context, s
 	mutex_unlock(&vm_context->lock);
 
 	for(int i = 0; i < shm_buf->num_pages; i++) {
-		struct page *page = shm_buf->guest_page_list[i];
-		if(page)
-			optee_mediator_pin_page(page);
+		optee_mediator_pin_guest_page(vm_context->kvm, (gpa_t) shm_buf->guest_page_list[i]);
 	}
 }
 
@@ -282,9 +288,7 @@ static void optee_mediator_free_shm_buf(struct optee_vm_context *vm_context, u64
 			}
 
 			for(int buf = 0; buf < shm_buf->num_pages; buf++) {
-				struct page *page = shm_buf->guest_page_list[buf];
-				if(page)
-					optee_mediator_unpin_page(page);
+				optee_mediator_unpin_guest_page(vm_context->kvm, (gpa_t) shm_buf->guest_page_list[buf]);
 			}
 
 			vm_context->shm_buf_page_count -= shm_buf->num_pages;
@@ -347,11 +351,7 @@ static void optee_mediator_enlist_shm_rpc(struct optee_vm_context *vm_context, s
 	list_add_tail(&shm_rpc->list, &vm_context->shm_rpc_list);
 	mutex_unlock(&vm_context->lock);
 
-	struct page *page;
-
-	page = virt_to_page(shm_rpc->rpc_arg_hva);
-	if(page)
-		optee_mediator_pin_page(page);
+	optee_mediator_pin_guest_page(vm_context->kvm, (gpa_t) shm_rpc->rpc_arg_gpa);
 }
 
 static struct optee_shm_rpc *optee_mediator_find_shm_rpc(struct optee_vm_context *vm_context, u64 cookie) {
@@ -382,11 +382,8 @@ static void optee_mediator_free_shm_rpc(struct optee_vm_context *vm_context, u64
 
 	list_for_each_entry_safe(shm_rpc, tmp, &vm_context->shm_rpc_list, list) {
 		if(shm_rpc->cookie == cookie) {
-			struct page *page;
 
-			page = virt_to_page(shm_rpc->rpc_arg_hva);
-			if(page)
-				optee_mediator_unpin_page(page);
+			optee_mediator_unpin_guest_page(vm_context->kvm, (gpa_t) shm_rpc->rpc_arg_gpa);
 
 			list_del(&shm_rpc->list);
 			kfree(shm_rpc);
@@ -515,7 +512,7 @@ static int optee_mediator_resolve_noncontig(struct optee_vm_context *vm_context,
 		goto out;
 	}
 
-	struct page **guest_page_list = (struct page**) vzalloc(num_entries * sizeof(struct page*));
+	gpa_t *guest_page_list = (gpa_t*) vzalloc(num_entries * sizeof(gpa_t*));
 	if(!guest_page_list) {
 		ret = -ENOMEM;
 		goto out_free_shadow_buffer_list;
@@ -540,7 +537,7 @@ static int optee_mediator_resolve_noncontig(struct optee_vm_context *vm_context,
 			if(!buffer_entry_hva)
 				continue;
 
-			guest_page_list[guest_page_num++] = virt_to_page(buffer_entry_hva);
+			guest_page_list[guest_page_num++] = (gpa_t) virt_to_page(buffer_entry_hva);
 
 			phys_addr_t buffer_entry_phys = optee_mediator_gpa_to_phys(kvm, buffer_entry_gpa);
 
@@ -1146,7 +1143,7 @@ static void optee_mediator_forward_smc(struct kvm_vcpu *vcpu) {
     		break;
 
 		default:
-			vcpu_set_reg(vcpu, 0, OPTEE_SMC_RETURN_ENOTAVAIL);
+			vcpu_set_reg(vcpu, 0, OPTEE_SMC_RETURN_UNKNOWN_FUNCTION);
 			break;
 	}
 
@@ -1259,3 +1256,6 @@ static void __exit optee_mediator_exit(void) {
 
 }
 module_exit(optee_mediator_exit);
+
+
+#pragma GCC pop_options
