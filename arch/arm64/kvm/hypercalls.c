@@ -3,6 +3,7 @@
 
 #include <linux/arm-smccc.h>
 #include <linux/kvm_host.h>
+#include <linux/tee_mediator.h>
 
 #include <asm/kvm_emulate.h>
 
@@ -90,7 +91,10 @@ static bool kvm_smccc_default_allowed(u32 func_id)
 		 */
 		if (func_id >= KVM_PSCI_FN(0) && func_id <= KVM_PSCI_FN(3))
 			return true;
-
+#ifdef CONFIG_TEE_MEDIATOR
+		if (ARM_SMCCC_IS_OWNER_TRUSTED_APP(func_id) || ARM_SMCCC_IS_OWNER_TRUSTED_OS(func_id))
+			return true;
+#endif
 		return false;
 	}
 }
@@ -285,7 +289,14 @@ int kvm_smccc_call_handler(struct kvm_vcpu *vcpu)
 		WARN_RATELIMIT(1, "Unhandled SMCCC filter action: %d\n", action);
 		goto out;
 	}
-
+#ifdef CONFIG_TEE_MEDIATOR
+	if (ARM_SMCCC_IS_OWNER_TRUSTED_APP(func_id) || ARM_SMCCC_IS_OWNER_TRUSTED_OS(func_id)) {
+		if (tee_mediator_is_active()) {
+			tee_mediator_forward_request(vcpu);
+			return 1;
+		}
+	}
+#endif
 	switch (func_id) {
 	case ARM_SMCCC_VERSION_FUNC_ID:
 		val[0] = ARM_SMCCC_VERSION_1_1;
