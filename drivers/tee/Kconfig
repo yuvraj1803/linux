@@ -11,6 +11,11 @@ menuconfig TEE
 	  This implements a generic interface towards a Trusted Execution
 	  Environment (TEE).
 
+config TEE_MEDIATOR
+	bool "Trusted Execution Environment Mediator support"
+	depends on KVM
+	help
+	  Provides an abstraction layer for TEE drivers to mediate KVM guest requests to the TEE.
 if TEE
 
 source "drivers/tee/optee/Kconfig"
