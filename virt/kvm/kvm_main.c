@@ -49,6 +49,7 @@
 #include <linux/lockdep.h>
 #include <linux/kthread.h>
 #include <linux/suspend.h>
+#include <linux/tee_mediator.h>
 
 #include <asm/processor.h>
 #include <asm/ioctl.h>
@@ -1265,7 +1266,10 @@ static void kvm_destroy_vm(struct kvm *kvm)
 {
 	int i;
 	struct mm_struct *mm = kvm->mm;
-
+#ifdef CONFIG_TEE_MEDIATOR
+	if (tee_mediator_is_active())
+		(void) tee_mediator_destroy_vm(kvm);
+#endif
 	kvm_destroy_pm_notifier(kvm);
 	kvm_uevent_notify_change(KVM_EVENT_DESTROY_VM, kvm);
 	kvm_destroy_vm_debugfs(kvm);
@@ -5488,7 +5492,10 @@ static int kvm_dev_ioctl_create_vm(unsigned long type)
 	 * care of doing kvm_put_kvm(kvm).
 	 */
 	kvm_uevent_notify_change(KVM_EVENT_CREATE_VM, kvm);
-
+#ifdef CONFIG_TEE_MEDIATOR
+	if (tee_mediator_is_active())
+		(void) tee_mediator_create_vm(kvm);
+#endif
 	fd_install(fd, file);
 	return fd;
 
