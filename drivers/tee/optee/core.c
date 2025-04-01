@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/tee_core.h>
+#include <linux/tee_mediator.h>
 #include <linux/types.h>
 #include "optee_private.h"
 
@@ -195,7 +196,13 @@ static bool intf_is_regged;
 static int __init optee_core_init(void)
 {
 	int rc;
-
+#ifdef CONFIG_TEE_MEDIATOR
+	if (tee_mediator_is_active()) {
+		rc = tee_mediator_create_host();
+		if (rc < 0)
+			return rc;
+	}
+#endif
 	/*
 	 * The kernel may have crashed at the same time that all available
 	 * secure world threads were suspended and we cannot reschedule the
@@ -240,6 +247,10 @@ static void __exit optee_core_exit(void)
 		optee_smc_abi_unregister();
 	if (!ffa_abi_rc)
 		optee_ffa_abi_unregister();
+#ifdef CONFIG_TEE_MEDIATOR
+	if (tee_mediator_is_active())
+		tee_mediator_destroy_host();
+#endif
 }
 module_exit(optee_core_exit);
 
