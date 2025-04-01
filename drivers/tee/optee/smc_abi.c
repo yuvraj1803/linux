@@ -25,8 +25,10 @@
 #include <linux/slab.h>
 #include <linux/string.h>
 #include <linux/tee_core.h>
+#include <linux/tee_mediator.h>
 #include <linux/types.h>
 #include <linux/workqueue.h>
+#include "optee_mediator.h"
 #include "optee_private.h"
 #include "optee_smc.h"
 #include "optee_rpc_cmd.h"
@@ -1396,6 +1398,10 @@ static void optee_smccc_smc(unsigned long a0, unsigned long a1,
 			    unsigned long a6, unsigned long a7,
 			    struct arm_smccc_res *res)
 {
+#ifdef CONFIG_TEE_MEDIATOR
+	if (tee_mediator_is_active())
+		a7 = OPTEE_HOST_VMID;
+#endif
 	arm_smccc_smc(a0, a1, a2, a3, a4, a5, a6, a7, res);
 }
 
