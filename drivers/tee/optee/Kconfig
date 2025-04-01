@@ -25,3 +25,10 @@ config OPTEE_INSECURE_LOAD_IMAGE
 
 	  Additional documentation on kernel security risks are at
 	  Documentation/tee/op-tee.rst.
+
+config OPTEE_MEDIATOR
+	bool "OP-TEE Mediator support"
+	depends on TEE_MEDIATOR && OPTEE && ARM64 && KVM
+	help
+	  This enables a KVM guest equipped with an OP-TEE driver to interact with OP-TEE
+	  in the secure world.
